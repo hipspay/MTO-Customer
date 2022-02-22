@@ -1,0 +1,18 @@
+.orders-table {
+    .table-cell {
+        .in_delivery {
+            color: #129811 !important;
+        }
+
+        .over_delivery {
+            color: yellow !important;
+        }
+
+        .completed {
+            color: #3f51b5 !important;
+        }
+        .in_dispute {
+            color: #ee8d8a;
+        }
+    }
+}

@@ -1,0 +1,19 @@
+.form-field {
+    display: flex;
+    align-items: center;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    .label {
+        margin-right: 15px;
+        min-width: 140px;
+        color: #757575;
+
+        &.w-100 {
+            width: 100%;
+        }
+    }
+
+    .MuiFormControl-root {
+        flex: 1;
+    }
+}
