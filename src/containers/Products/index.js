@@ -1,16 +1,16 @@
 import React, { useState, useCallback, useEffect } from 'react';
 
 import { useHistory } from 'react-router';
-
-import { getMyProducts } from '../../apis/products.api';
-import { getMyCompletedOrders } from '../../apis/orders.api';
+import { useSelector } from 'react-redux';
+// import { getMyProducts } from '../../apis/products.api';
+// import { getMyCompletedOrders } from '../../apis/orders.api';
 import Layout from '../../components/Layout';
-import ProductsTable from '../../components/ProductsTable';
+// import ProductsTable from '../../components/ProductsTable';
 import Spinner from '../../components/Common/Spinner';
 
 import './style.scss';
-
 import OrdersTable from '../../components/OrdersTable';
+
 const productTableColumns = [
     {
         title: 'Image',
@@ -40,37 +40,42 @@ function ProductsPage() {
     const [keyword, setKeyword] = useState('');
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
 
     const showDetail = (id) => {
         // history.push(`/products/${id}`);
-        let order  = products.find(pro=> pro.id===id)
+        const order  = products.find(pro=> pro.id===id)
         history.push(`/products/${order.product.id}`);
     };
 
-    const fetchProducts = useCallback(() => {
-        setIsLoading(true);
-        const query = {
-            page,
-            limit: pageSize,
-            sortBy: 'id',
-            order: 'DESC',
-        };
+    const fetchProducts = useCallback(async () => {
+        try {
+            if (!bkdDriver || !bkdDriver.headers)
+                return;
+            setIsLoading(true);
+            const query = {
+                page,
+                limit: pageSize,
+                sortBy: 'id',
+                order: 'DESC',
+            };
 
-        // getMyProducts(query)
-        getMyCompletedOrders(query)
-            .then((res) => {
+            // getMyProducts(query)
+            const res = await bkdDriver.completedorders(query)
+            if (res) {
                 console.log(res);
-                setProducts(res.data.orders);
-                setTotalCount(res.data.totalCount);
-            })
-            .catch((err) => {
-                console.log(err);
+                setProducts(res.orders);
+                setTotalCount(res.totalCount);
+            } else {
                 setProducts([]);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [page, pageSize]);
+            }
+            setIsLoading(false);
+        } catch (error) {
+            console.log('completedorders error', error);
+            setIsLoading(false);
+        }
+        
+    }, [page, pageSize, bkdDriver]);
 
     useEffect(() => {
         fetchProducts();

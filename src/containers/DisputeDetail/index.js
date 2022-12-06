@@ -4,32 +4,35 @@ import { Person } from '@material-ui/icons';
 import React, { useEffect, useState } from 'react';
 
 import { useHistory } from 'react-router';
-
-import { getDispute } from '../../apis/disputs.api';
+import { useSelector } from 'react-redux';
+// import { getDispute } from '../../apis/disputs.api';
 import Layout from '../../components/Layout';
 import { parseDate } from '../../utils/index';
 import ConfirmDialog from '../../components/Common/ComfirmDialog';
 import Spinner from '../../components/Common/Spinner';
-
 import './style.scss';
+
 
 const DisputeDetailPage = () => {
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState();
     const [isOpenConfirmDialog, setIsOpenConfirmDialog] = useState(false);
     const history = useHistory();
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
 
-    useEffect(() => {
+
+    const getDisputeDetail = async () => {
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
         setIsLoading(true);
         const id = history.location.pathname.split('/disputes/')[1];
-        getDispute(id)
-            .then((res) => {
-                setData(res.data);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [history.location.pathname]);
+        const res = await bkdDriver.getDisputeById(id);
+        setData(res);
+        setIsLoading(false);
+    }
+    useEffect(() => {
+        getDisputeDetail();
+    }, [history.location.pathname, bkdDriver]);
 
     const cancelDispute = () => {
         setIsLoading(true);

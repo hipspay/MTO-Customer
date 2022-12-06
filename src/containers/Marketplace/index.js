@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useHistory } from 'react-router';
-
+import { useSelector } from 'react-redux';
 import Layout from '../../components/Layout';
 import Spinner from '../../components/Common/Spinner';
 import ProductsTable from '../../components/ProductsTable';
-import { getProducts } from '../../apis/products.api';
+// import { getProducts } from '../../apis/products.api';
 
 import './style.scss';
 
@@ -35,12 +35,14 @@ const Marketplace = () => {
     const [keyword, setKeyword] = useState('');
     const [products, setProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
-
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
     const showDetail = (id) => {
         history.push(`/products/${id}`);
     };
 
-    const fetchProducts = useCallback(() => {
+    const fetchProducts = useCallback( async() => {
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
         setIsLoading(true);
         const query = {
             page,
@@ -49,19 +51,15 @@ const Marketplace = () => {
             order: 'DESC',
         };
 
-        getProducts(query)
-            .then((res) => {
-                setProducts(res.data.products);
-                setTotalCount(res.data.totalCount);
-            })
-            .catch((err) => {
-                console.log(err);
-                setProducts([]);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [page, pageSize]);
+        const res = await bkdDriver.getProducts(query);
+        if (res) {
+            setProducts(res.products);
+            setTotalCount(res.totalCount);
+        } else {
+            setProducts([]);
+        }
+        setIsLoading(false);
+    }, [page, pageSize, bkdDriver]);
 
     useEffect(() => {
         fetchProducts();

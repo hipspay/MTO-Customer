@@ -15,3 +15,9 @@ export const toWei = (web3, amount) =>
     web3.utils.toWei(web3.utils.toBN(amount), 'ether');
 
 export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export const getStandardTime = (time) => {
+    const standardTimestamp = new Date(time).getTime() + new Date(time).getTimezoneOffset() * 60 * 1000
+    const standardTime = new Date(standardTimestamp);
+    return standardTime;
+};

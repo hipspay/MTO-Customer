@@ -1,3 +1,5 @@
+import { getStandardTime } from "utils";
+
 // eslint-disable-next-line import/prefer-default-export
 export const orderStatus = {
     in_delivery: 'In Delivery',
@@ -6,8 +8,11 @@ export const orderStatus = {
     in_dispute: 'Disputed',
 };
 
+
+
 export function getOrderStatus(order) {
     let { status, deliveryTime } = order;
+    deliveryTime = getStandardTime(deliveryTime);
 
     if (
         order.status === 'in_delivery' &&

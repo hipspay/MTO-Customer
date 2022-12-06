@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useHistory } from 'react-router';
-
+import { useSelector } from 'react-redux';
 import Layout from '../../components/Layout';
 import OrdersTable from '../../components/OrdersTable';
 import Spinner from '../../components/Common/Spinner';
-import { getOrders } from '../../apis/orders.api';
+// import { getOrders } from '../../apis/orders.api';
 
 import './style.scss';
 
@@ -39,27 +39,32 @@ const OrdersPage = () => {
     const [pageSize, setPageSize] = useState(10);
     const [keyword, setKeyword] = useState('');
     const [totalCount, setTotalCount] = useState(0);
-
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
     const showDetail = (id) => {
         history.push(`/orders/${id}`);
     };
 
-    const fetchOrders = useCallback(() => {
-        setIsLoading(true);
-        const query = {
-            page,
-            limit: pageSize,
-        };
+    const fetchOrders = useCallback(async () => {
+        try {
+            if (!bkdDriver || !bkdDriver.headers)
+                return;
 
-        getOrders(query)
-            .then((res) => {
-                setOrders(res.data.orders);
-                setTotalCount(res.data.totalCount);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [page, pageSize]);
+            setIsLoading(true);
+            const query = {
+                page,
+                limit: pageSize,
+            };
+
+            const res = await bkdDriver.myorders(query);
+            setOrders(res.orders);
+            setTotalCount(res.totalCount);
+            setIsLoading(false);
+        } catch (error) {
+            console.log('myorders error', error);
+            setIsLoading(false);
+        }
+        
+    }, [page, pageSize, bkdDriver]);
 
     useEffect(() => {
         fetchOrders();

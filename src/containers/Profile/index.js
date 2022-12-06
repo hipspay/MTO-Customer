@@ -5,7 +5,7 @@ import Dropzone from 'react-dropzone';
 import { useSelector } from 'react-redux';
 import Layout from '../../components/Layout';
 import Spinner from '../../components/Common/Spinner';
-import { getProfile, updateProfile } from '../../apis/profile.api';
+// import { getProfile, updateProfile } from '../../apis/profile.api';
 import './style.scss';
 
 const ProfilePage = () => {
@@ -13,16 +13,25 @@ const ProfilePage = () => {
 
     const [data, setData] = useState({});
     const [isLoading, setIsLoading] = useState(false);
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
 
-    useEffect(() => {
+    const profile = async () => {
+        console.log('profile1');
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
+        
+        console.log('profile2', bkdDriver);
         setIsLoading(true);
-        getProfile(account)
-            .then((res) => {
-                setData(res.data);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
+
+        const res = await bkdDriver.getProfile({address: account});
+
+        console.log('res', res);
+        setData(res);
+        setIsLoading(false);
+    }
+   
+    useEffect(() => {
+        profile();
     }, [account]);
 
     const [isEditingMode, setIsEditingMode] = useState(false);
@@ -43,16 +52,15 @@ const ProfilePage = () => {
         }
     }, [data.externalLink, data.name, data.shippingAddress, isEditingMode]);
 
-    const update = () => {
+    const update = async () => {
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
+
         setIsLoading(true);
-        updateProfile({ name, shippingAddress, externalLink, address:account })
-            .then((res) => {
-                setData(res.data);
-            })
-            .finally(() => {
-                setIsLoading(false);
-                setIsEditingMode(false);
-            });
+        const updateResult = await bkdDriver.updateProfile({ name, shippingAddress, externalLink, address:account });
+        setData(updateResult);
+        setIsLoading(false);
+        setIsEditingMode(false);
     };
 
     return (

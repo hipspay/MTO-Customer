@@ -13,7 +13,7 @@ import {
 import { Search } from '@material-ui/icons';
 
 import { orderStatus, getOrderStatus } from '../../constants';
-import { parseDate } from '../../utils/index';
+import { getStandardTime, parseDate } from '../../utils/index';
 import './style.scss';
 
 const OrdersTable = ({
@@ -96,7 +96,7 @@ const OrdersTable = ({
                                             {column.key === 'product.image' ? (
                                                 <img src={`${value}`} alt="" />
                                             ) : column.key === 'createdAt' ? (
-                                                <span>{parseDate(value)}</span>
+                                                <span>{parseDate(getStandardTime(value))}</span>
                                             ) : (
                                                 <>
                                                     {column.key === 'status' ? (

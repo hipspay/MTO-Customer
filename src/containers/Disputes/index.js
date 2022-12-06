@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useHistory } from 'react-router';
-
+import { useSelector } from 'react-redux';
 import Layout from '../../components/Layout';
 import DisputesTable from '../../components/DisputesTable';
 import Spinner from '../../components/Common/Spinner';
-import { getDisputes } from '../../apis/disputs.api';
+// import { getDisputes } from '../../apis/disputs.api';
 
 import './style.scss';
 
@@ -39,23 +39,22 @@ const DisputesPage = () => {
     const [pageSize, setPageSize] = useState(10);
     const [keyword, setKeyword] = useState('');
     const [totalCount, setTotalCount] = useState(0);
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
 
-    const fetchDisputes = useCallback(() => {
+    const fetchDisputes = useCallback(async () => {
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
         setIsLoading(true);
         const query = {
             page,
             limit: pageSize,
         };
 
-        getDisputes(query)
-            .then((res) => {
-                setDisputes(res.data.disputes);
-                setTotalCount(res.data.totalCount);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [page, pageSize]);
+        const res = await bkdDriver.getDisputes(query);
+        setDisputes(res.disputes);
+        setTotalCount(res.totalCount);
+        setIsLoading(false);
+    }, [page, pageSize, bkdDriver]);
 
     useEffect(() => {
         fetchDisputes();

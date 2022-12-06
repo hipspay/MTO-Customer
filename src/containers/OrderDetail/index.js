@@ -10,15 +10,15 @@ import { useSelector } from 'react-redux';
 import { useSnackbar } from 'notistack';
 
 import { orderStatus, getOrderStatus } from '../../constants';
-import {
-    getDisputeByEscrow,
-    updateDisputeByEscrow,
-} from '../../apis/disputs.api';
-import { getOrder } from '../../apis/orders.api';
+// import {
+//     getDisputeByEscrow,
+//     updateDisputeByEscrow,
+// } from '../../apis/disputs.api';
+// import { getOrder } from '../../apis/orders.api';
 import Layout from '../../components/Layout';
-import escrowABI from '../../constants/escrowABI.json';
-import tokenABI from '../../constants/tokenABI.json';
-import { parseDate, toWei, sleep } from '../../utils/index';
+// import escrowABI from '../../constants/escrowABI.json';
+// import tokenABI from '../../constants/tokenABI.json';
+import { parseDate, toWei, sleep, getStandardTime } from '../../utils/index';
 import ConfirmDialog from '../../components/Common/ComfirmDialog';
 import Spinner from '../../components/Common/Spinner';
 import './style.scss';
@@ -31,7 +31,7 @@ const notificationConfig = {
 
 const OrderDetailPage = () => {
     const history = useHistory();
-    const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+    const { enqueueSnackbar } = useSnackbar();
 
     const [data, setData] = useState(null);
     const [isLoading, setIsLoading] = useState();
@@ -39,11 +39,11 @@ const OrderDetailPage = () => {
     const [isConfirmDispute, setIsConfirmDispute] = useState(false);
     const [remainTime, setRemainTime] = useState('');
 
-    const [escrowContract, setEscrowContract] = useState(null);
-    const [tokenContract, setTokenContract] = useState(null);
-
-    const { web3, account, connected } = useSelector((state) => state.web3);
-
+    // const [escrowContract, setEscrowContract] = useState(null);
+    // const [tokenContract, setTokenContract] = useState(null);
+    const bkdDriver = useSelector((state) => state.driverObject.bkdDriver);
+    const { web3, connected } = useSelector((state) => state.web3);
+    const scDriver = useSelector((state) => state.driverObject.scDriver);
     const showNotification = (msg) => {
         enqueueSnackbar(msg, {
             ...notificationConfig,
@@ -51,23 +51,26 @@ const OrderDetailPage = () => {
         });
     };
 
+
     useEffect(() => {
         if (!data) {
             return;
         }
 
-        const deadline = new Date(data.deliveryTime).getTime();
+        const deadline = getStandardTime(data.deliveryTime).getTime();
         const timer = setInterval(() => {
-            const seconds = (deadline - new Date().getTime()) / 1000;
+            let seconds = (deadline - new Date().getTime()) / 1000;
             let minutes = Math.floor(seconds / 60);
             let hours = Math.floor(minutes / 60);
             minutes %= 60;
             const days = Math.floor(hours / 24);
             hours %= 24;
+            seconds %= 60;
             setRemainTime(
                 `${days > 0 ? days : 0}d: ${hours > 0 ? hours : 0}h: ${
                     minutes > 0 ? minutes : 0
-                }m`
+                // eslint-disable-next-line radix
+                }m: ${seconds > 0 ? parseInt(seconds): 0}s`
             );
         }, 1000);
 
@@ -76,17 +79,20 @@ const OrderDetailPage = () => {
         };
     }, [data]);
 
-    useEffect(() => {
+    const getOrder = async () => {
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
+
         setIsLoading(true);
         const id = history.location.pathname.split('/orders/')[1];
-        getOrder(id)
-            .then((res) => {
-                setData(res.data);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [history.location.pathname]);
+        const order = await bkdDriver.myorder(id);
+        setData(order);
+        setIsLoading(false);
+    }
+
+    useEffect(() => {
+        getOrder();
+    }, [history.location.pathname, bkdDriver]);
 
     const confirmArrival = () => {
         setIsLoading(true);
@@ -97,47 +103,60 @@ const OrderDetailPage = () => {
         }, 5000);
     };
 
-    React.useEffect(() => {
-        if (escrowContract && tokenContract) return;
-        if (!connected) return;
+    // React.useEffect(() => {
+    //     if (escrowContract && tokenContract) return;
+    //     if (!connected) return;
 
-        const EscrowContract = new web3.eth.Contract(
-            escrowABI,
-            process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS
-        );
+    //     const EscrowContract = new web3.eth.Contract(
+    //         escrowABI,
+    //         process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS
+    //     );
 
-        const TokenContract = new web3.eth.Contract(
-            tokenABI,
-            process.env.REACT_APP_TOKEN_CONTRACT_ADDRESS
-        );
+    //     const TokenContract = new web3.eth.Contract(
+    //         tokenABI,
+    //         process.env.REACT_APP_TOKEN_CONTRACT_ADDRESS
+    //     );
 
-        setEscrowContract(EscrowContract);
-        setTokenContract(TokenContract);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [web3]);
+    //     setEscrowContract(EscrowContract);
+    //     setTokenContract(TokenContract);
+    //     // eslint-disable-next-line react-hooks/exhaustive-deps
+    // }, [web3]);
 
-    const verifyDispute = async (escrowId, timeToEnd) => {
+    const verifyDispute = async (disputeId, timeToEnd) => {
+        if (!bkdDriver || !bkdDriver.headers) {
+            return;
+        }
+            
+
         try {
-            const {
-                data: { id },
-            } = await getDisputeByEscrow(escrowId);
+            const { id } = await bkdDriver.getDisputeByDisputeId(disputeId);
             console.log('returning', id);
-            return id;
+            if (id) {
+                return id;
+            } else {
+                await sleep(2000);
+                if (Date.now() > timeToEnd) {
+                    return false;
+                }
+                return verifyDispute(disputeId, timeToEnd);
+            }
+
+            
         } catch (error) {
             console.log(error);
             await sleep(2000);
             if (Date.now() > timeToEnd) {
                 return false;
             }
-            return verifyDispute(escrowId, timeToEnd);
+            return verifyDispute(disputeId, timeToEnd);
         }
     };
 
     const updateDisputeDescription = async (disputeId, description) => {
+        if (!bkdDriver || !bkdDriver.headers)
+            return;
         try {
-            const {
-                data: { id },
-            } = await updateDisputeByEscrow(disputeId, {
+            const { id } = await bkdDriver.updateDispute(disputeId, {
                 description,
             });
             console.log('returning', id);
@@ -153,42 +172,64 @@ const OrderDetailPage = () => {
         setIsLoading(true);
         setIsConfirmDispute(false);
         try {
-            const { transactionHash: transactionHashApprove } =
-                await tokenContract.methods
-                    .approve(
-                        process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS,
-                        toWei(web3, 2)
-                    )
-                    .send({ from: account });
+            // const { transactionHash: transactionHashApprove } =
+            //     await tokenContract.methods
+            //         .approve(
+            //             process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS,
+            //             toWei(web3, process.env.REACT_APP_CUSTOMER_ESCROW_FEE)
+            //         )
+            //         .send({ from: account });
 
-            await web3.eth.getTransactionReceipt(transactionHashApprove);
+            // await web3.eth.getTransactionReceipt(transactionHashApprove);
 
-            const result = await escrowContract.methods
-                .dispute(data.escrowId)
-                .send({ from: account });
+            const feeAmount = toWei(web3, process.env.REACT_APP_CUSTOMER_ESCROW_FEE);
+            const balance = await scDriver.getTokenBalance();
+            if(Number(balance.toString()) < Number(feeAmount)) {
+                showNotification('User does not have enough balance.');                
+                setIsLoading(false);
+                return
+            }
 
-            const { transactionHash: transactionHashPurchase } = result;
-            const purchaseReceipt = await web3.eth.getTransactionReceipt(
-                transactionHashPurchase
-            );
+            const approve = await scDriver.approve(feeAmount);
+            const approveReceipt = await approve.wait();
+            console.log(' approve_receipt', approveReceipt);
 
-            const blockLog = purchaseReceipt.logs.filter(
-                (elem) =>
-                    elem.address.toLowerCase() ===
-                    process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS.toLowerCase()
-            )[0];
-            const pastEvents = await escrowContract.getPastEvents('allEvents', {
-                fromBlock: blockLog.blockNumber,
-                toBlock: blockLog.blockNumber,
-            });
+            const dispute = await scDriver.startDispute(
+                (data.escrowId));
+            const disputeReceipt = await dispute.wait();
+            console.log(' approve_receipt', disputeReceipt);
+            const disputeEvents = disputeReceipt.events?.filter((x) => x.event === "Disputed");
+            const disputeId = disputeEvents[0].args._disputeId.toString();
+            console.log('purchase _disputeId', disputeId);
 
-            const escrowId = pastEvents[0].returnValues._disputeId;
+
+
+            // const result = await escrowContract.methods
+            //     .dispute(data.escrowId)
+            //     .send({ from: account });
+
+            // const { transactionHash: transactionHashPurchase } = result;
+            // const purchaseReceipt = await web3.eth.getTransactionReceipt(
+            //     transactionHashPurchase
+            // );
+
+            // const blockLog = purchaseReceipt.logs.filter(
+            //     (elem) =>
+            //         elem.address.toLowerCase() ===
+            //         process.env.REACT_APP_ESCROW_CONTRACT_ADDRESS.toLowerCase()
+            // )[0];
+            // const pastEvents = await escrowContract.getPastEvents('allEvents', {
+            //     fromBlock: blockLog.blockNumber,
+            //     toBlock: blockLog.blockNumber,
+            // });
+
+            // const escrowId = pastEvents[0].returnValues._disputeId;
 
             const endRequestsAt = Date.now() + 120000;
-            const orderId = await verifyDispute(escrowId, endRequestsAt);
+            const orderId = await verifyDispute(disputeId, endRequestsAt);
             if (orderId) {
                 const disputeUpdateResult = await updateDisputeDescription(
-                    escrowId,
+                    disputeId,
                     description
                 );
                 console.log('disputeUpdateResult', disputeUpdateResult);
@@ -204,12 +245,19 @@ const OrderDetailPage = () => {
         }
     };
 
+   
     const handleDispute = () => {
-        if (new Date(data.deliveryTime).getTime() >= new Date().getTime()) {
+        console.log(data.deliveryTime)
+        console.log(new Date(data.deliveryTime));
+        console.log(new Date());
+
+        
+        
+        if (getStandardTime(data.deliveryTime).getTime() >= new Date().getTime()) {
             showNotification('Dispute can only be created after delivery time');
             return;
         }
-        if (new Date().getTime() >= new Date(data.escrowTime).getTime()) {
+        if (new Date().getTime() >= getStandardTime(data.escrowTime).getTime()) {
             showNotification('Dispute can not be created after withdraw time');
             return;
         }
@@ -289,14 +337,14 @@ const OrderDetailPage = () => {
                                     <div className="info-item">
                                         <span>Delivery period Ends On:</span>
                                         <span>
-                                            {parseDate(data.deliveryTime)}
+                                            {parseDate(getStandardTime(data.deliveryTime))}
                                         </span>
                                     </div>
 
                                     <div className="info-item">
                                         <span>Withdraw period Ends On:</span>
                                         <span>
-                                            {parseDate(data.escrowTime)}
+                                            {parseDate(getStandardTime(data.escrowTime))}
                                         </span>
                                     </div>
                                 </div>

@@ -1,3 +1,5 @@
+export const SET_BKD_DRIVER = 'SET_BKD_DRIVER';
+export const SET_SC_DRIVER = 'SET_SC_DRIVER';
 export const SET_WEB3_STATE = 'SET_WEB3_STATE';
 export const CLEAR_WEB3_STATE = 'SET_WEB3_STATE';
 
@@ -17,7 +19,7 @@ export const SET_META_MASK_ADDRESS = "SET_META_MASK_ADDRESS";
 export const DELETE_META_MASK_ADDRESS = "DELETE_META_MASK_ADDRESS";
 
 
-//profile reducer
+// profile reducer
 export const SET_PROFILE_NFTS = "SET_PROFILE_NFTS";
 export const SET_SELECTED_PAGE_PROFILE = "SET_SELECTED_PAGE_PROFILE";
 export const SET_SELECTED_TYPE_PROFILE = "SET_SELECTED_TYPE_PROFILE";
